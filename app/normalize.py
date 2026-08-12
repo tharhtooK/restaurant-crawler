@@ -38,6 +38,92 @@ _DIETARY_PHRASES = {
     "dairy-free": ("dairy-free menu", "dairy free menu", "dairy-free options"),
 }
 
+_MARKUP = re.compile(r"[*_#>`]|\[(?P<label>[^\]]*)\]\([^)]*\)")
+_RATING = re.compile(r"\b\d(?:\.\d)?\s*/\s*5(?:\s*stars?)?\b|\b\d\s*stars?\b", re.IGNORECASE)
+_SENTENCE = re.compile(r"(?<=[.!?])\s+")
+
+MAX_REVIEW_SENTENCES = 3
+
+
+def review_content(text: str) -> str:
+    without_markup = _MARKUP.sub(lambda m: m.group("label") or "", text or "")
+    without_ratings = _RATING.sub("", without_markup)
+    collapsed = " ".join(without_ratings.replace("—", "").split())
+    sentences = _SENTENCE.split(collapsed)
+    return " ".join(sentences[:MAX_REVIEW_SENTENCES]).strip()
+
+
+def _google_reviews(google_detail: dict) -> list[dict]:
+    reviews = []
+    for entry in google_detail.get("reviews") or []:
+        content = review_content((entry.get("text") or {}).get("text", ""))
+        if not content:
+            continue
+        reviews.append({
+            "content": content,
+            "source": "google",
+            "sourceUrl": entry.get("googleMapsUri"),
+            "publishedAt": entry.get("publishTime"),
+        })
+    return reviews
+
+
+def _foursquare_reviews(fsq_tips: list[dict]) -> list[dict]:
+    reviews = []
+    for tip in fsq_tips or []:
+        content = review_content(tip.get("text", ""))
+        if not content:
+            continue
+        reviews.append({
+            "content": content,
+            "source": "foursquare",
+            "sourceUrl": tip.get("url"),
+            "publishedAt": tip.get("created_at"),
+        })
+    return reviews
+
+
+def build_restaurant(neighborhood: str, google_detail: dict, fsq_place: dict | None,
+                     fsq_tips: list[dict], page: dict | None, max_reviews: int) -> dict:
+    name = (google_detail.get("displayName") or {}).get("text", "").strip()
+    if not name:
+        raise ValueError(f"place {google_detail.get('id')!r} has no display name")
+
+    page_markdown = (page or {}).get("markdown")
+    reviews = (_google_reviews(google_detail) + _foursquare_reviews(fsq_tips))[:max_reviews]
+
+    return {
+        "slug": restaurant_slug(neighborhood, name),
+        "name": name,
+        "neighborhood": neighborhood,
+        "cuisine": cuisine_label(google_detail, fsq_place),
+        "priceTier": price_tier(google_detail.get("priceLevel"), (fsq_place or {}).get("price")),
+        "address": google_detail.get("formattedAddress", ""),
+        "dietary": dietary_tags(google_detail, page_markdown),
+        "hours": hours_from_google(google_detail.get("regularOpeningHours")),
+        "reviews": reviews,
+        "raw": {
+            "google": google_detail,
+            "foursquare": {"place": fsq_place, "tips": fsq_tips},
+            "website": page,
+        },
+    }
+
+
+def derive_source_status(outcomes: list[tuple[str, bool]]) -> dict[str, str]:
+    by_source: dict[str, list[bool]] = {}
+    for source, succeeded in outcomes:
+        by_source.setdefault(source, []).append(succeeded)
+
+    status = {}
+    for source, results in by_source.items():
+        if all(results):
+            status[source] = "ok"
+        elif any(results):
+            status[source] = "partial"
+        else:
+            status[source] = "failed"
+    return status
 
 def _clock(point: dict) -> str | None:
     hour = point.get("hour")
