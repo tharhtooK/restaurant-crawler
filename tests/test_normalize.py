@@ -1,0 +1,93 @@
+from app.normalize import (
+    cuisine_label,
+    dietary_tags,
+    neighborhood_code,
+    price_tier,
+    restaurant_slug,
+)
+
+
+def test_known_neighborhood_codes_match_the_consumers_existing_slugs():
+    assert neighborhood_code("East Village") == "ev"
+    assert neighborhood_code("Flushing") == "fl"
+    assert neighborhood_code("Williamsburg") == "wb"
+    assert neighborhood_code("Harlem") == "hl"
+    assert neighborhood_code("Astoria") == "as"
+    assert neighborhood_code("Bushwick") == "bw"
+
+
+def test_known_codes_are_matched_regardless_of_casing_and_spacing():
+    assert neighborhood_code("  east village ") == "ev"
+    assert neighborhood_code("BUSHWICK") == "bw"
+
+
+def test_unknown_neighborhood_falls_back_to_its_first_two_letters():
+    assert neighborhood_code("Red Hook") == "re"
+
+
+def test_slug_is_stable_across_identical_calls():
+    first = restaurant_slug("Bushwick", "Roberta's")
+    second = restaurant_slug("Bushwick", "Roberta's")
+    assert first == second == "bw-robertas"
+
+
+def test_slug_is_lowercase_kebab_case_without_punctuation():
+    assert restaurant_slug("Flushing", "Tian Jin Dumpling House") == "fl-tian-jin-dumpling-house"
+    assert restaurant_slug("Harlem", "Sylvia's  Restaurant!") == "hl-sylvias-restaurant"
+
+
+def test_google_price_levels_map_to_tiers():
+    assert price_tier("PRICE_LEVEL_INEXPENSIVE", None) == 1
+    assert price_tier("PRICE_LEVEL_MODERATE", None) == 2
+    assert price_tier("PRICE_LEVEL_EXPENSIVE", None) == 3
+    assert price_tier("PRICE_LEVEL_VERY_EXPENSIVE", None) == 4
+    assert price_tier("PRICE_LEVEL_FREE", None) == 1
+
+
+def test_foursquare_price_is_used_when_google_has_none():
+    assert price_tier(None, 3) == 3
+
+
+def test_no_price_anywhere_defaults_to_two_and_never_zero_or_none():
+    assert price_tier(None, None) == 2
+    assert price_tier("PRICE_LEVEL_UNSPECIFIED", None) == 2
+    assert price_tier(None, 0) == 2
+    assert price_tier(None, 9) == 2
+
+
+def test_cuisine_prefers_googles_display_name_without_the_word_restaurant():
+    detail = {"primaryTypeDisplayName": {"text": "Pizza restaurant"}}
+    assert cuisine_label(detail, None) == "Pizza"
+
+
+def test_cuisine_falls_back_to_foursquare_category_then_to_a_plain_default():
+    fsq = {"categories": [{"name": "Korean BBQ Restaurant"}]}
+    assert cuisine_label({}, fsq) == "Korean BBQ"
+    assert cuisine_label({}, None) == "Restaurant"
+
+
+def test_dietary_tag_comes_from_an_explicit_google_attribute():
+    assert dietary_tags({"servesVegetarianFood": True}, None) == ["vegetarian"]
+    assert dietary_tags({"servesVegetarianFood": False}, None) == []
+
+
+def test_dietary_tags_come_from_explicit_phrases_on_the_restaurants_own_page():
+    page = "Our fully vegan kitchen also offers a gluten-free menu."
+    assert dietary_tags({}, page) == ["gluten-free", "vegan"]
+
+
+def test_dietary_phrases_are_matched_regardless_of_casing():
+    assert dietary_tags({}, "CERTIFIED HALAL since 1998") == ["halal"]
+
+
+def test_dietary_tags_are_never_inferred_from_cuisine():
+    """A wrong halal or kosher tag can cause someone real harm, so an unstated
+    tag must read as unknown."""
+    page = "Authentic Middle Eastern cuisine. Our deli serves pastrami."
+    detail = {"primaryTypeDisplayName": {"text": "Middle Eastern restaurant"}}
+    assert dietary_tags(detail, page) == []
+
+
+def test_dietary_tags_are_deduplicated_and_sorted():
+    page = "vegan options and a vegan menu, plus vegetarian options"
+    assert dietary_tags({}, page) == ["vegan", "vegetarian"]
