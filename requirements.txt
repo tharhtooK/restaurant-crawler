@@ -1,0 +1,8 @@
+fastapi==0.141.*
+uvicorn[standard]==0.52.*
+pydantic==2.13.*
+httpx>=0.28,<1.0
+crawl4ai==0.9.*
+playwright==1.62.0
+pytest==9.1.*
+pytest-asyncio==1.4.*

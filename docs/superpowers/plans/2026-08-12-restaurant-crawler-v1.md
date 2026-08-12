@@ -58,14 +58,14 @@ every later task runs `pytest` inside it and there is no Python environment on
 the host. `app/main.py`'s `/health` route has no logic to unit-test — it is
 verified by the `curl` in Step 12 — so TDD here applies to `app/config.py`.
 
-- [ ] **Step 1: Create the package directories**
+- [X] **Step 1: Create the package directories**
 
 ```bash
 mkdir -p app/sources tests fixtures
 touch app/__init__.py app/sources/__init__.py tests/__init__.py fixtures/.gitkeep
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [X] **Step 2: Write the failing test**
 
 ```python
 # tests/test_config.py
@@ -100,7 +100,7 @@ def test_enabled_sources_reflects_which_credentials_are_present():
     assert enabled_sources(no_keys) == ["website"]
 ```
 
-- [ ] **Step 3: Write `requirements.txt`**
+- [X] **Step 3: Write `requirements.txt`**
 
 ```
 fastapi==0.141.*
@@ -113,7 +113,7 @@ pytest==9.1.*
 pytest-asyncio==1.4.*
 ```
 
-- [ ] **Step 4: Write `Dockerfile`**
+- [X] **Step 4: Write `Dockerfile`**
 
 ```dockerfile
 # The tag's Playwright version must equal the pin in requirements.txt, or crawl4ai
@@ -137,7 +137,7 @@ EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
 ```
 
-- [ ] **Step 5: Write `docker-compose.yml`**
+- [X] **Step 5: Write `docker-compose.yml`**
 
 ```yaml
 services:
@@ -156,7 +156,7 @@ services:
       uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --reload
 ```
 
-- [ ] **Step 6: Write `pytest.ini`**
+- [X] **Step 6: Write `pytest.ini`**
 
 `asyncio_mode = auto` lets the async tests in Tasks 5–7 run without a decorator
 on every one of them.
@@ -166,7 +166,7 @@ on every one of them.
 asyncio_mode = auto
 ```
 
-- [ ] **Step 7: Write `.env.example`**
+- [X] **Step 7: Write `.env.example`**
 
 ```
 # Shared secret the consumer sends as `Authorization: Bearer <key>`.
@@ -182,7 +182,7 @@ CRAWL_CONCURRENCY=4
 LOG_LEVEL=INFO
 ```
 
-- [ ] **Step 8: Write `Makefile`**
+- [X] **Step 8: Write `Makefile`**
 
 ```makefile
 .PHONY: up down logs test shell
@@ -203,7 +203,7 @@ shell:
 	docker compose exec crawler bash
 ```
 
-- [ ] **Step 9: Write a placeholder `app/main.py` so the container can start**
+- [X] **Step 9: Write a placeholder `app/main.py` so the container can start**
 
 The `/health` route is the whole file at this point; the crawl routes arrive in
 Task 8.
@@ -228,7 +228,7 @@ def health() -> dict[str, bool]:
     return {"ok": True}
 ```
 
-- [ ] **Step 10: Create `.env` and build the container**
+- [X] **Step 10: Create `.env` and build the container**
 
 Run:
 ```bash
@@ -239,17 +239,17 @@ make up
 Expected: the build completes and `docker compose ps` shows `crawler` running.
 The first build pulls a ~2GB base image, so expect several minutes.
 
-- [ ] **Step 11: Run the test to verify it fails**
+- [X] **Step 11: Run the test to verify it fails**
 
 Run: `docker compose exec crawler pytest tests/test_config.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'app.config'`
 
-- [ ] **Step 12: Check `/health`**
+- [X] **Step 12: Check `/health`**
 
 Run: `curl -s localhost:8000/health`
 Expected: `{"ok":true}`
 
-- [ ] **Step 13: Write `app/config.py`**
+- [X] **Step 13: Write `app/config.py`**
 
 ```python
 import logging
@@ -315,12 +315,12 @@ def enabled_sources(s: Settings) -> list[str]:
     return names
 ```
 
-- [ ] **Step 14: Run the test to verify it passes**
+- [X] **Step 14: Run the test to verify it passes**
 
 Run: `docker compose exec crawler pytest tests/test_config.py -v`
 Expected: 3 passed
 
-- [ ] **Step 15: Log the enabled sources at startup**
+- [X] **Step 15: Log the enabled sources at startup**
 
 Replace `app/main.py` with the version that reports its configuration. FastAPI's
 `on_event` hooks are deprecated; `lifespan` is the current form.
@@ -355,13 +355,13 @@ def health() -> dict[str, bool]:
     return {"ok": True}
 ```
 
-- [ ] **Step 16: Confirm the startup log**
+- [X] **Step 16: Confirm the startup log**
 
 Run: `docker compose restart crawler && sleep 3 && docker compose logs crawler | grep "sources enabled"`
 Expected: `sources enabled: website` — Google and Foursquare are absent because no
 keys are set yet, which is the correct behaviour, not a failure.
 
-- [ ] **Step 17: Write `README.md`**
+- [X] **Step 17: Write `README.md`**
 
 ````markdown
 # restaurant-crawler
