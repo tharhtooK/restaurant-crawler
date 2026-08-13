@@ -1642,7 +1642,7 @@ git commit -m "feat: Foursquare tips and restaurant website sources"
 - Consumes: everything from Tasks 2–6
 - Produces: `Job` dataclass with fields `id: str`, `neighborhood: str`, `status: str`, `progress: dict`, `restaurants: list`, `source_status: dict`, `errors: list`, `crawled_at: str | None`; `create_job(neighborhood: str) -> Job`; `find_active(neighborhood: str) -> Job | None`; `get_job(job_id: str) -> Job | None`; `job_payload(job: Job) -> dict`; `async run_crawl(job: Job, request: CrawlRequest) -> None`; `reset_registry() -> None` for tests
 
-- [ ] **Step 1: Write the failing test**
+- [X] **Step 1: Write the failing test**
 
 ```python
 # tests/test_jobs.py
@@ -1801,12 +1801,12 @@ async def test_a_source_without_credentials_is_absent_from_source_status(monkeyp
     assert payload["status"] == "succeeded"
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [X] **Step 2: Run the test to verify it fails**
 
 Run: `docker compose exec crawler pytest tests/test_jobs.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'app.jobs'`
 
-- [ ] **Step 3: Write the registry half of `app/jobs.py`**
+- [X] **Step 3: Write the registry half of `app/jobs.py`**
 
 ```python
 import asyncio
@@ -1880,7 +1880,7 @@ def job_payload(job: Job) -> dict:
     }
 ```
 
-- [ ] **Step 4: Write the pipeline half of `app/jobs.py`**
+- [X] **Step 4: Write the pipeline half of `app/jobs.py`**
 
 Append to the same file:
 
@@ -2001,17 +2001,17 @@ async def run_crawl(job: Job, request: CrawlRequest) -> None:
     logger.info("job %s %s with %d restaurants", job.id, job.status, len(job.restaurants))
 ```
 
-- [ ] **Step 5: Run the test to verify it passes**
+- [X] **Step 5: Run the test to verify it passes**
 
 Run: `docker compose exec crawler pytest tests/test_jobs.py -v`
 Expected: 9 passed
 
-- [ ] **Step 6: Run the whole suite**
+- [X] **Step 6: Run the whole suite**
 
 Run: `make test`
 Expected: 60 passed
 
-- [ ] **Step 7: Commit**
+- [X] **Step 7: Commit**
 
 ```bash
 git add app/jobs.py tests/test_jobs.py
@@ -2031,7 +2031,7 @@ git commit -m "feat: job registry and the discovery to fan-out crawl pipeline"
 - Consumes: `app/jobs.py` from Task 7, `CrawlRequest` from Task 4
 - Produces: `POST /crawl` returning `202 {"jobId", "status"}`; `GET /crawl/{job_id}` returning `job_payload`; `GET /health` unchanged and unauthenticated
 
-- [ ] **Step 1: Write the failing test**
+- [X] **Step 1: Write the failing test**
 
 ```python
 # tests/test_routes.py
@@ -2119,12 +2119,12 @@ def test_polling_a_known_job_returns_its_payload(client):
     assert response.json()["jobId"] == job_id
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [X] **Step 2: Run the test to verify it fails**
 
 Run: `docker compose exec crawler pytest tests/test_routes.py -v`
 Expected: FAIL — the `/crawl` routes return 404 because they do not exist
 
-- [ ] **Step 3: Rewrite `app/main.py`**
+- [X] **Step 3: Rewrite `app/main.py`**
 
 ```python
 import asyncio
@@ -2186,17 +2186,17 @@ def poll_crawl(job_id: str) -> dict:
     return jobs.job_payload(job)
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [X] **Step 4: Run the test to verify it passes**
 
 Run: `docker compose exec crawler pytest tests/test_routes.py -v`
 Expected: 10 passed
 
-- [ ] **Step 5: Run the whole suite**
+- [X] **Step 5: Run the whole suite**
 
 Run: `make test`
 Expected: 70 passed
 
-- [ ] **Step 6: Check the running service by hand**
+- [X] **Step 6: Check the running service by hand**
 
 Run:
 ```bash
@@ -2209,7 +2209,7 @@ curl -s -X POST localhost:8000/crawl -H "Authorization: Bearer $KEY" \
 ```
 Expected: `{"ok":true}`, then `401`, then a `jobId`. The job itself will fail without a Google key — that is Task 9.
 
-- [ ] **Step 7: Commit**
+- [X] **Step 7: Commit**
 
 ```bash
 git add app/main.py tests/test_routes.py
@@ -2235,10 +2235,15 @@ git commit -m "feat: crawl and poll routes behind bearer auth"
 
 ```bash
 # edit .env, filling GOOGLE_MAPS_API_KEY and FSQ_SERVICE_KEY
-docker compose restart crawler
-docker compose logs crawler | grep "sources enabled"
+docker compose up -d
+docker compose logs crawler --since 30s | grep "sources enabled"
 ```
-Expected: `sources enabled: google, foursquare, website`
+Expected: `Recreated`, then `sources enabled: google, foursquare, website`.
+
+`up -d`, never `restart`: `env_file` is read when the container is created, so
+`restart` reuses the environment the container already had and the new keys are
+invisible. The symptom is `sources enabled: website` after you have filled both
+keys in.
 
 - [ ] **Step 2: Add the smoke target to `Makefile`**
 
@@ -2359,7 +2364,7 @@ Expected: the slugs that appear in both runs are identical strings. This is acce
 Run:
 ```bash
 sed -i '' 's/^FSQ_SERVICE_KEY=.*/FSQ_SERVICE_KEY=deliberately-wrong/' .env
-docker compose restart crawler && sleep 5
+docker compose up -d && sleep 5
 make smoke
 ```
 Expected: `succeeded`, still 3 restaurants, `sourceStatus` showing `foursquare: failed`, and Foursquare entries in `errors`. This is acceptance criterion #5. Restore the real key afterwards and restart.
