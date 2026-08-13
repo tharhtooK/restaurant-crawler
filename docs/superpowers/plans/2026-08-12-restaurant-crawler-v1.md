@@ -388,12 +388,12 @@ job created before the restart returns 404. That is an accepted tradeoff at this
 scale, not an oversight.
 ````
 
-- [ ] **Step 18: Run the whole suite**
+- [X] **Step 18: Run the whole suite**
 
 Run: `make test`
 Expected: 3 passed
 
-- [ ] **Step 19: Commit**
+- [X] **Step 19: Commit**
 
 ```bash
 git add -A
@@ -414,7 +414,7 @@ The contract calls §4 "where the bugs live". Hours are the worst of it, so they
 - Consumes: nothing
 - Produces: `hours_from_google(regular_opening_hours: dict | None) -> dict[str, dict | None]` returning exactly the seven keys `mon,tue,wed,thu,fri,sat,sun`, each `None` or `{"open": "HH:MM", "close": "HH:MM"}`
 
-- [ ] **Step 1: Write the failing test**
+- [X] **Step 1: Write the failing test**
 
 Google Places (New) returns `regularOpeningHours.periods`, each `{"open": {"day": 0-6, "hour": h, "minute": m}, "close": {...}}`, where day 0 is Sunday. A 24-hour place returns an `open` with no `close`.
 
@@ -472,12 +472,12 @@ def test_a_malformed_period_is_dropped_rather_than_half_written():
     assert sum(1 for value in hours.values() if value) == 1
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [X] **Step 2: Run the test to verify it fails**
 
 Run: `docker compose exec crawler pytest tests/test_hours.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'app.normalize'`
 
-- [ ] **Step 3: Write `app/normalize.py`**
+- [X] **Step 3: Write `app/normalize.py`**
 
 ```python
 import logging
@@ -519,12 +519,12 @@ def hours_from_google(regular_opening_hours: dict | None) -> dict[str, dict | No
     return hours
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [X] **Step 4: Run the test to verify it passes**
 
 Run: `docker compose exec crawler pytest tests/test_hours.py -v`
 Expected: 7 passed
 
-- [ ] **Step 5: Commit**
+- [X] **Step 5: Commit**
 
 ```bash
 git add app/normalize.py tests/test_hours.py
@@ -544,7 +544,7 @@ git commit -m "feat: normalize Google opening hours into the seven-key structure
 - Consumes: `app/normalize.py` from Task 2
 - Produces: `neighborhood_code(neighborhood: str) -> str`; `restaurant_slug(neighborhood: str, name: str) -> str`; `price_tier(google_price_level: str | None, fsq_price: int | None) -> int`; `cuisine_label(google_detail: dict, fsq_place: dict | None) -> str`; `dietary_tags(google_detail: dict, page_markdown: str | None) -> list[str]`
 
-- [ ] **Step 1: Write the failing test**
+- [X] **Step 1: Write the failing test**
 
 ```python
 # tests/test_normalize.py
@@ -643,12 +643,12 @@ def test_dietary_tags_are_deduplicated_and_sorted():
     assert dietary_tags({}, page) == ["vegan", "vegetarian"]
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [X] **Step 2: Run the test to verify it fails**
 
 Run: `docker compose exec crawler pytest tests/test_normalize.py -v`
 Expected: FAIL with `ImportError: cannot import name 'cuisine_label' from 'app.normalize'`
 
-- [ ] **Step 3: Add the imports and tables to `app/normalize.py`**
+- [X] **Step 3: Add the imports and tables to `app/normalize.py`**
 
 Add at the top, below the existing imports:
 
@@ -692,7 +692,7 @@ _DIETARY_PHRASES = {
 }
 ```
 
-- [ ] **Step 4: Add the functions to `app/normalize.py`**
+- [X] **Step 4: Add the functions to `app/normalize.py`**
 
 ```python
 def neighborhood_code(neighborhood: str) -> str:
@@ -746,17 +746,17 @@ def dietary_tags(google_detail: dict, page_markdown: str | None) -> list[str]:
     return sorted(tags)
 ```
 
-- [ ] **Step 5: Run the test to verify it passes**
+- [X] **Step 5: Run the test to verify it passes**
 
 Run: `docker compose exec crawler pytest tests/test_normalize.py -v`
 Expected: 15 passed
 
-- [ ] **Step 6: Run the whole suite**
+- [X] **Step 6: Run the whole suite**
 
 Run: `make test`
 Expected: 25 passed
 
-- [ ] **Step 7: Commit**
+- [X] **Step 7: Commit**
 
 ```bash
 git add app/normalize.py tests/test_normalize.py
@@ -776,7 +776,7 @@ git commit -m "feat: slug, price tier, cuisine, and dietary normalization"
 - Consumes: everything from Tasks 2 and 3
 - Produces: `CrawlRequest`, `Review`, `Restaurant`, `JobStatus` in `app/models.py`; `review_content(text: str) -> str`, `build_restaurant(neighborhood, google_detail, fsq_place, fsq_tips, page, max_reviews) -> dict`, and `derive_source_status(outcomes: list[tuple[str, bool]]) -> dict[str, str]` in `app/normalize.py`
 
-- [ ] **Step 1: Write the failing model test**
+- [X] **Step 1: Write the failing model test**
 
 ```python
 # tests/test_models.py
@@ -841,12 +841,12 @@ def test_restaurant_rejects_a_price_tier_outside_one_to_four():
         Restaurant.model_validate(_valid_restaurant(priceTier=0))
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [X] **Step 2: Run the test to verify it fails**
 
 Run: `docker compose exec crawler pytest tests/test_models.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'app.models'`
 
-- [ ] **Step 3: Write `app/models.py`**
+- [X] **Step 3: Write `app/models.py`**
 
 ```python
 from typing import Literal
@@ -914,12 +914,12 @@ class JobStatus(BaseModel):
     status: Literal["queued", "running", "succeeded", "failed"]
 ```
 
-- [ ] **Step 4: Run the model test to verify it passes**
+- [X] **Step 4: Run the model test to verify it passes**
 
 Run: `docker compose exec crawler pytest tests/test_models.py -v`
-Expected: 7 passed
+Expected: 6 passed
 
-- [ ] **Step 5: Write the failing assembly test**
+- [X] **Step 5: Write the failing assembly test**
 
 ```python
 # tests/test_assembly.py
@@ -993,12 +993,12 @@ def test_a_source_that_never_ran_is_absent_from_source_status():
     assert "foursquare" not in derive_source_status([("google", True)])
 ```
 
-- [ ] **Step 6: Run the test to verify it fails**
+- [X] **Step 6: Run the test to verify it fails**
 
 Run: `docker compose exec crawler pytest tests/test_assembly.py -v`
 Expected: FAIL with `ImportError: cannot import name 'build_restaurant' from 'app.normalize'`
 
-- [ ] **Step 7: Add assembly to `app/normalize.py`**
+- [X] **Step 7: Add assembly to `app/normalize.py`**
 
 ```python
 _MARKUP = re.compile(r"[*_#>`]|\[(?P<label>[^\]]*)\]\([^)]*\)")
@@ -1089,17 +1089,17 @@ def derive_source_status(outcomes: list[tuple[str, bool]]) -> dict[str, str]:
     return status
 ```
 
-- [ ] **Step 8: Run the test to verify it passes**
+- [X] **Step 8: Run the test to verify it passes**
 
 Run: `docker compose exec crawler pytest tests/test_assembly.py -v`
 Expected: 7 passed
 
-- [ ] **Step 9: Run the whole suite**
+- [X] **Step 9: Run the whole suite**
 
 Run: `make test`
-Expected: 39 passed
+Expected: 38 passed
 
-- [ ] **Step 10: Commit**
+- [X] **Step 10: Commit**
 
 ```bash
 git add app/models.py app/normalize.py tests/test_models.py tests/test_assembly.py
@@ -1120,7 +1120,7 @@ Tests use `httpx.MockTransport`, so they assert the exact request this code buil
 - Consumes: `settings()` from Task 1
 - Produces: `search_restaurants(client: httpx.AsyncClient, neighborhood: str, city: str, limit: int) -> list[dict]`; `place_details(client: httpx.AsyncClient, place_id: str) -> dict`; the module constants `SEARCH_FIELDS` and `DETAIL_FIELDS`
 
-- [ ] **Step 1: Write the failing test**
+- [X] **Step 1: Write the failing test**
 
 ```python
 # tests/test_google_source.py
@@ -1220,12 +1220,12 @@ async def test_a_non_200_raises_with_the_status_and_body():
             await place_details(client, "abc")
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [X] **Step 2: Run the test to verify it fails**
 
 Run: `docker compose exec crawler pytest tests/test_google_source.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'app.sources'`
 
-- [ ] **Step 3: Write `app/sources/google.py`**
+- [X] **Step 3: Write `app/sources/google.py`**
 
 ```python
 import logging
@@ -1299,12 +1299,12 @@ async def place_details(client: httpx.AsyncClient, place_id: str) -> dict:
     return response.json()
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [X] **Step 4: Run the test to verify it passes**
 
 Run: `docker compose exec crawler pytest tests/test_google_source.py -v`
 Expected: 5 passed
 
-- [ ] **Step 5: Commit**
+- [X] **Step 5: Commit**
 
 ```bash
 git add app/sources tests/test_google_source.py
@@ -1464,6 +1464,12 @@ async def match_place(client: httpx.AsyncClient, name: str, lat: float,
 
     candidates = _results(response.json())
     wanted = _comparable(name)
+
+    # Foursquare orders by its own relevance, so "Roberta's Pizza Truck" can come
+    # back before "Roberta's". An exact name wins before a containing one.
+    for candidate in candidates:
+        if wanted and _comparable(candidate.get("name", "")) == wanted:
+            return candidate
     for candidate in candidates:
         if wanted and wanted in _comparable(candidate.get("name", "")):
             return candidate
@@ -1996,7 +2002,7 @@ Expected: 9 passed
 - [ ] **Step 6: Run the whole suite**
 
 Run: `make test`
-Expected: 61 passed
+Expected: 60 passed
 
 - [ ] **Step 7: Commit**
 
@@ -2181,7 +2187,7 @@ Expected: 10 passed
 - [ ] **Step 5: Run the whole suite**
 
 Run: `make test`
-Expected: 71 passed
+Expected: 70 passed
 
 - [ ] **Step 6: Check the running service by hand**
 
@@ -2389,7 +2395,7 @@ A job is `failed` only when it produced no restaurants at all. Anything else is
 - [ ] **Step 11: Run the whole suite one last time**
 
 Run: `make test`
-Expected: 73 passed
+Expected: 72 passed
 
 - [ ] **Step 12: Commit**
 
