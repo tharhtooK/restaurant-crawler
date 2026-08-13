@@ -1323,7 +1323,7 @@ git commit -m "feat: Google Places search and details source"
 - Consumes: `settings()` from Task 1
 - Produces: `match_place(client, name, lat, lng) -> dict | None` and `place_tips(client, fsq_id, limit) -> list[dict]` in `foursquare.py`; `crawlable(url: str | None) -> bool` and `fetch_page(url: str) -> dict | None` in `website.py`, where a page is `{"url": str, "title": str | None, "markdown": str}`
 
-- [ ] **Step 1: Write the failing Foursquare test**
+- [X] **Step 1: Write the failing Foursquare test**
 
 ```python
 # tests/test_foursquare_source.py
@@ -1405,12 +1405,12 @@ async def test_a_non_200_raises_rather_than_returning_nothing():
             await place_tips(client, "abc", 10)
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [X] **Step 2: Run the test to verify it fails**
 
 Run: `docker compose exec crawler pytest tests/test_foursquare_source.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'app.sources.foursquare'`
 
-- [ ] **Step 3: Write `app/sources/foursquare.py`**
+- [X] **Step 3: Write `app/sources/foursquare.py`**
 
 ```python
 import logging
@@ -1498,12 +1498,12 @@ async def place_tips(client: httpx.AsyncClient, fsq_id: str, limit: int) -> list
     return list(collected.values())[:limit]
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [X] **Step 4: Run the test to verify it passes**
 
 Run: `docker compose exec crawler pytest tests/test_foursquare_source.py -v`
 Expected: 5 passed
 
-- [ ] **Step 5: Write the failing website test**
+- [X] **Step 5: Write the failing website test**
 
 ```python
 # tests/test_website_source.py
@@ -1531,12 +1531,12 @@ def test_a_missing_or_malformed_url_is_not_crawlable():
     assert crawlable("not-a-url") is False
 ```
 
-- [ ] **Step 6: Run the test to verify it fails**
+- [X] **Step 6: Run the test to verify it fails**
 
 Run: `docker compose exec crawler pytest tests/test_website_source.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'app.sources.website'`
 
-- [ ] **Step 7: Write `app/sources/website.py`**
+- [X] **Step 7: Write `app/sources/website.py`**
 
 ```python
 import logging
@@ -1603,12 +1603,12 @@ async def fetch_page(url: str) -> dict | None:
     return {"url": result.url, "title": (result.metadata or {}).get("title"), "markdown": text}
 ```
 
-- [ ] **Step 8: Run the test to verify it passes**
+- [X] **Step 8: Run the test to verify it passes**
 
 Run: `docker compose exec crawler pytest tests/test_website_source.py -v`
 Expected: 3 passed
 
-- [ ] **Step 9: Verify Chromium actually launches in the container**
+- [X] **Step 9: Verify Chromium actually launches in the container**
 
 This is the step that catches a Playwright/base-image version mismatch, and it is the only reason to run a live crawl this early.
 
@@ -1623,7 +1623,7 @@ print('crawl returned:', 'a page' if page else 'too little text (expected for ex
 ```
 Expected: either line prints without an exception. An `Executable doesn't exist` error means the `playwright` pin and the base image tag have drifted apart — fix the pin, do not install a browser by hand.
 
-- [ ] **Step 10: Commit**
+- [X] **Step 10: Commit**
 
 ```bash
 git add app/sources tests/test_foursquare_source.py tests/test_website_source.py
@@ -1964,6 +1964,13 @@ async def run_crawl(job: Job, request: CrawlRequest) -> None:
             job.crawled_at = _utc_now()
             job.errors.append({"source": "google", "slug": None, "message": str(error)})
             logger.error("job %s discovery failed: %s", job.id, error)
+            return
+
+        # asyncio.wait raises on an empty set, and there is nothing to enrich.
+        if not places:
+            job.status = "failed"
+            job.crawled_at = _utc_now()
+            logger.info("job %s found no restaurants in %r", job.id, request.neighborhood)
             return
 
         job.progress = {"found": len(places), "completed": 0, "total": len(places)}
