@@ -17,6 +17,10 @@ PAGE_TIMEOUT_MS = 30000
 MAX_PAGES_PER_SITE = 3
 MAX_CRAWL_DEPTH = 1
 
+# Discovery order buries the menu behind reservations and catering, so the page
+# budget is spent on the URLs whose names suggest food.
+MENU_KEYWORDS = ["menu", "food", "about", "drink"]
+
 
 def crawlable(url: str | None) -> bool:
     if not url:
@@ -64,9 +68,10 @@ def _page_text(result) -> str:
 async def fetch_site(url: str) -> dict | None:
     """Imported inside the function so the service still boots and answers /health
     on a host where Chromium is missing."""
-    from crawl4ai import (AsyncWebCrawler, BFSDeepCrawlStrategy, BrowserConfig,
+    from crawl4ai import (AsyncWebCrawler, BestFirstCrawlingStrategy, BrowserConfig,
                           CacheMode, CrawlerRunConfig, DefaultMarkdownGenerator,
                           PruningContentFilter)
+    from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer
 
     browser = BrowserConfig(headless=True, text_mode=True, light_mode=True, verbose=False)
     run = CrawlerRunConfig(
@@ -74,16 +79,18 @@ async def fetch_site(url: str) -> dict | None:
         markdown_generator=DefaultMarkdownGenerator(
             content_filter=PruningContentFilter(threshold=0.45, threshold_type="dynamic")),
         excluded_tags=["nav", "footer", "header", "form", "script", "style", "aside"],
-        remove_overlay_elements=True,
+        # No remove_overlay_elements: it strips the markup a site's menu link can
+        # live in, so the deep crawler never discovers the menu page.
         exclude_external_links=True,
         word_count_threshold=15,
         page_timeout=PAGE_TIMEOUT_MS,
         check_robots_txt=True,
         verbose=False,
-        deep_crawl_strategy=BFSDeepCrawlStrategy(
+        deep_crawl_strategy=BestFirstCrawlingStrategy(
             max_depth=MAX_CRAWL_DEPTH,
             max_pages=MAX_PAGES_PER_SITE,
             include_external=False,
+            url_scorer=KeywordRelevanceScorer(keywords=MENU_KEYWORDS),
         ),
     )
 

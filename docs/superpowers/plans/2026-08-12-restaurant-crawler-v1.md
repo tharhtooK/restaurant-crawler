@@ -10,6 +10,12 @@
 
 ## Change log
 
+**2026-08-13 — menu pages are now reached.** The deep crawl uses
+`BestFirstCrawlingStrategy` with a `KeywordRelevanceScorer`, and
+`remove_overlay_elements` was removed: it stripped the markup holding the menu
+link, so the crawler never discovered the menu page. Isolated by running the same
+crawl with each flag toggled.
+
 **2026-08-13 — the website source crawls a site, not a page.** `fetch_page`
 became `fetch_site`, using crawl4ai's `BFSDeepCrawlStrategy` at depth 1, capped
 at 3 pages, same-domain only, with the pages' markdown concatenated. Task 6 below
