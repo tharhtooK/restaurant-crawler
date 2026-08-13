@@ -10,6 +10,12 @@
 
 ## Change log
 
+**2026-08-13 — dietary phrases widened.** A live crawl found Ayat's own site
+saying "all halal, all delicious" and the original phrase list missed it, losing
+a true first-party claim. Task 3's list below is the corrected one. Bare-word
+matching was rejected: it would also match "not halal" and a page mentioning a
+halal place down the street, and a false positive here is the harm §4 warns about.
+
 **2026-08-13 — Foursquare removed.** Tasks 3, 4, 6 and 7 below still show the
 Foursquare code as it was built, because they were executed that way. It was then
 removed: the tips endpoint needs purchased credits, and `match_place` was a fuzzy
@@ -692,12 +698,20 @@ DEFAULT_PRICE_TIER = 2
 # Only phrases a restaurant states about itself. Never a cuisine, a dish, or a
 # category name.
 _DIETARY_PHRASES = {
-    "vegan": ("vegan menu", "vegan options", "fully vegan", "100% vegan", "all vegan"),
-    "vegetarian": ("vegetarian menu", "vegetarian options", "fully vegetarian"),
-    "halal": ("certified halal", "halal certified", "100% halal", "halal meat"),
-    "kosher": ("certified kosher", "kosher certified", "glatt kosher"),
-    "gluten-free": ("gluten-free menu", "gluten free menu", "gluten-free options"),
-    "dairy-free": ("dairy-free menu", "dairy free menu", "dairy-free options"),
+    "vegan": ("vegan menu", "vegan options", "vegan friendly", "vegan-friendly",
+              "fully vegan", "100% vegan", "all vegan", "entirely vegan",
+              "plant-based menu", "fully plant-based"),
+    "vegetarian": ("vegetarian menu", "vegetarian options", "vegetarian friendly",
+                   "vegetarian-friendly", "fully vegetarian", "all vegetarian"),
+    "halal": ("certified halal", "halal certified", "100% halal", "halal meat",
+              "all halal", "fully halal", "halal kitchen", "halal restaurant",
+              "serves halal"),
+    "kosher": ("certified kosher", "kosher certified", "glatt kosher",
+               "all kosher", "fully kosher", "kosher kitchen", "kosher restaurant"),
+    "gluten-free": ("gluten-free menu", "gluten free menu", "gluten-free options",
+                    "gluten free options", "gluten-free kitchen", "gluten free kitchen"),
+    "dairy-free": ("dairy-free menu", "dairy free menu", "dairy-free options",
+                   "dairy free options"),
 }
 ```
 

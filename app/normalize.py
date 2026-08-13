@@ -30,12 +30,20 @@ DEFAULT_PRICE_TIER = 2
 # Only phrases a restaurant states about itself. Never a cuisine, a dish, or a
 # category name.
 _DIETARY_PHRASES = {
-    "vegan": ("vegan menu", "vegan options", "fully vegan", "100% vegan", "all vegan"),
-    "vegetarian": ("vegetarian menu", "vegetarian options", "fully vegetarian"),
-    "halal": ("certified halal", "halal certified", "100% halal", "halal meat"),
-    "kosher": ("certified kosher", "kosher certified", "glatt kosher"),
-    "gluten-free": ("gluten-free menu", "gluten free menu", "gluten-free options"),
-    "dairy-free": ("dairy-free menu", "dairy free menu", "dairy-free options"),
+    "vegan": ("vegan menu", "vegan options", "vegan friendly", "vegan-friendly",
+              "fully vegan", "100% vegan", "all vegan", "entirely vegan",
+              "plant-based menu", "fully plant-based"),
+    "vegetarian": ("vegetarian menu", "vegetarian options", "vegetarian friendly",
+                   "vegetarian-friendly", "fully vegetarian", "all vegetarian"),
+    "halal": ("certified halal", "halal certified", "100% halal", "halal meat",
+              "all halal", "fully halal", "halal kitchen", "halal restaurant",
+              "serves halal"),
+    "kosher": ("certified kosher", "kosher certified", "glatt kosher",
+               "all kosher", "fully kosher", "kosher kitchen", "kosher restaurant"),
+    "gluten-free": ("gluten-free menu", "gluten free menu", "gluten-free options",
+                    "gluten free options", "gluten-free kitchen", "gluten free kitchen"),
+    "dairy-free": ("dairy-free menu", "dairy free menu", "dairy-free options",
+                   "dairy free options"),
 }
 
 _MARKUP = re.compile(r"[*_#>`]|\[(?P<label>[^\]]*)\]\([^)]*\)")

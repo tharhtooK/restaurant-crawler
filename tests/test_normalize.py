@@ -85,3 +85,16 @@ def test_dietary_tags_are_never_inferred_from_cuisine():
 def test_dietary_tags_are_deduplicated_and_sorted():
     page = "vegan options and a vegan menu, plus vegetarian options"
     assert dietary_tags({}, page) == ["vegan", "vegetarian"]
+
+def test_dietary_recognises_a_plain_first_party_claim():
+    """Ayat's own site says "all halal, all delicious" — a first-party statement,
+    which §4 accepts as evidence just as it accepts a certification."""
+    page = "Middle Eastern favorites and NYC spirit. All halal, all delicious."
+    assert dietary_tags({}, page) == ["halal"]
+
+
+def test_dietary_recognises_common_affirmative_phrasings():
+    assert dietary_tags({}, "our halal kitchen since 1998") == ["halal"]
+    assert dietary_tags({}, "a fully plant-based menu") == ["vegan"]
+    assert dietary_tags({}, "we are vegetarian-friendly") == ["vegetarian"]
+    assert dietary_tags({}, "gluten free options available") == ["gluten-free"]
