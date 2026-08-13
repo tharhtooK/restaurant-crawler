@@ -26,26 +26,17 @@ GOOGLE_DETAIL = {
 def clean_registry(monkeypatch):
     monkeypatch.setenv("CRAWLER_API_KEY", "secret")
     monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "google-key")
-    monkeypatch.setenv("FSQ_SERVICE_KEY", "fsq-key")
     import app.config
     monkeypatch.setattr(app.config, "_settings", None)
     jobs.reset_registry()
 
 
-def _stub_sources(monkeypatch, *, fsq_fails=False, site_fails=False):
+def _stub_sources(monkeypatch, *, site_fails=False):
     async def search(client, neighborhood, city, limit):
         return [GOOGLE_PLACE] * limit
 
     async def details(client, place_id):
         return GOOGLE_DETAIL
-
-    async def match(client, name, lat, lng):
-        if fsq_fails:
-            raise RuntimeError("fsq search 401: bad key")
-        return {"fsq_place_id": "fsq1", "price": 2}
-
-    async def tips(client, fsq_id, limit):
-        return [{"fsq_tip_id": "t1", "text": "Go on a weeknight."}]
 
     async def page(url):
         if site_fails:
@@ -54,8 +45,6 @@ def _stub_sources(monkeypatch, *, fsq_fails=False, site_fails=False):
 
     monkeypatch.setattr(jobs.google, "search_restaurants", search)
     monkeypatch.setattr(jobs.google, "place_details", details)
-    monkeypatch.setattr(jobs.foursquare, "match_place", match)
-    monkeypatch.setattr(jobs.foursquare, "place_tips", tips)
     monkeypatch.setattr(jobs.website, "fetch_page", page)
 
 
@@ -96,23 +85,23 @@ async def test_a_successful_crawl_produces_records_and_source_status(monkeypatch
     payload = jobs.job_payload(job)
     assert payload["status"] == "succeeded"
     assert len(payload["restaurants"]) == 3
-    assert payload["sourceStatus"] == {"google": "ok", "foursquare": "ok", "website": "ok"}
+    assert payload["sourceStatus"] == {"google": "ok", "website": "ok"}
     assert payload["neighborhood"] == "Bushwick"
     assert payload["crawledAt"].endswith("Z")
     assert payload["restaurants"][0]["dietary"] == ["vegan"]
 
 
 async def test_one_failing_source_still_succeeds_and_is_reported(monkeypatch):
-    _stub_sources(monkeypatch, fsq_fails=True)
+    _stub_sources(monkeypatch, site_fails=True)
     job = jobs.create_job("Bushwick")
     await jobs.run_crawl(job, CrawlRequest(neighborhood="Bushwick", limit=2))
 
     payload = jobs.job_payload(job)
     assert payload["status"] == "succeeded"
     assert len(payload["restaurants"]) == 2
-    assert payload["sourceStatus"]["foursquare"] == "failed"
+    assert payload["sourceStatus"]["website"] == "failed"
     assert payload["sourceStatus"]["google"] == "ok"
-    assert any(error["source"] == "foursquare" for error in payload["errors"])
+    assert any(error["source"] == "website" for error in payload["errors"])
 
 
 async def test_a_job_that_finds_nothing_fails(monkeypatch):
@@ -139,22 +128,19 @@ async def test_re_running_the_same_crawl_produces_the_same_slugs(monkeypatch):
     assert slugs[0] == slugs[1] == ["bw-robertas", "bw-robertas"]
 
 
-async def test_a_source_without_credentials_is_absent_from_source_status(monkeypatch):
+async def test_a_source_the_request_excluded_is_absent_from_source_status(monkeypatch):
     _stub_sources(monkeypatch)
-    monkeypatch.delenv("FSQ_SERVICE_KEY")
-    import app.config
-    monkeypatch.setattr(app.config, "_settings", None)
-
     job = jobs.create_job("Bushwick")
-    await jobs.run_crawl(job, CrawlRequest(neighborhood="Bushwick", limit=2))
+    await jobs.run_crawl(
+        job, CrawlRequest(neighborhood="Bushwick", limit=2, sources=["google"]))
 
     payload = jobs.job_payload(job)
-    assert "foursquare" not in payload["sourceStatus"]
+    assert "website" not in payload["sourceStatus"]
     assert payload["status"] == "succeeded"
 
 async def test_error_entries_identify_the_restaurant_by_slug(monkeypatch):
     """The contract's errors carry a slug, and the consumer correlates on it."""
-    _stub_sources(monkeypatch, fsq_fails=True)
+    _stub_sources(monkeypatch, site_fails=True)
     job = jobs.create_job("Bushwick")
     await jobs.run_crawl(job, CrawlRequest(neighborhood="Bushwick", limit=1))
 

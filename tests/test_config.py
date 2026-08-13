@@ -19,11 +19,8 @@ def test_defaults_apply_when_optional_vars_are_absent(monkeypatch):
 
 
 def test_enabled_sources_reflects_which_credentials_are_present():
-    both = Settings("k", "google-key", "fsq-key", 300, 4)
-    assert enabled_sources(both) == ["google", "foursquare", "website"]
+    with_google = Settings("k", "google-key", 300, 4)
+    assert enabled_sources(with_google) == ["google", "website"]
 
-    google_only = Settings("k", "google-key", None, 300, 4)
-    assert enabled_sources(google_only) == ["google", "website"]
-
-    no_keys = Settings("k", None, None, 300, 4)
+    no_keys = Settings("k", None, 300, 4)
     assert enabled_sources(no_keys) == ["website"]

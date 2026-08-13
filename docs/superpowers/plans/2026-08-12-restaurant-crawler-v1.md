@@ -8,6 +8,15 @@
 
 **Tech Stack:** Python 3.12 (from the Playwright base image), FastAPI, pydantic v2, httpx, crawl4ai, pytest, Docker Compose.
 
+## Change log
+
+**2026-08-13 — Foursquare removed.** Tasks 3, 4, 6 and 7 below still show the
+Foursquare code as it was built, because they were executed that way. It was then
+removed: the tips endpoint needs purchased credits, and `match_place` was a fuzzy
+name lookup with no confidence signal that can silently attach the wrong venue's
+data. v1 is Google Places plus the restaurant's own website. See the commit that
+carries this note for the diff.
+
 ## Global Constraints
 
 Copied from `docs/superpowers/specs/2026-08-12-restaurant-crawler-design.md` and `restaurant-rag/docs/coding-guidelines.md`. Every task's requirements implicitly include this section.
@@ -2221,32 +2230,33 @@ git commit -m "feat: crawl and poll routes behind bearer auth"
 
 ### Task 9: Live verification against the real APIs
 
-**Requires** a Google Places key and a Foursquare key in `.env`. Everything before this point runs without credentials; nothing after this can.
+**Requires** a Google Places key in `.env`. Everything before this point runs
+without credentials; nothing here can.
 
 **Files:**
-- Create: `fixtures/google-place-detail.json`, `fixtures/foursquare-tips.json`, `tests/test_fixtures_match_reality.py`
+- Create: `fixtures/google-place-detail.json`, `tests/test_fixtures_match_reality.py`
 - Modify: `Makefile`, `README.md`
 - Test: `tests/test_fixtures_match_reality.py`
 
 **Interfaces:**
 - Consumes: everything
-- Produces: committed fixtures recorded from real responses, and a `make smoke` target
+- Produces: a committed fixture recorded from a real response, and a `make smoke` target
 
-- [X] **Step 1: Add the keys and restart**
+- [ ] **Step 1: Add the key and recreate the container**
 
 ```bash
-# edit .env, filling GOOGLE_MAPS_API_KEY and FSQ_SERVICE_KEY
+# edit .env, filling GOOGLE_MAPS_API_KEY
 docker compose up -d
 docker compose logs crawler --since 30s | grep "sources enabled"
 ```
-Expected: `Recreated`, then `sources enabled: google, foursquare, website`.
+Expected: `Recreated`, then `sources enabled: google, website`.
 
 `up -d`, never `restart`: `env_file` is read when the container is created, so
-`restart` reuses the environment the container already had and the new keys are
-invisible. The symptom is `sources enabled: website` after you have filled both
-keys in.
+`restart` reuses the environment the container already had and the new key is
+invisible. The symptom is `sources enabled: website` after you have filled the
+key in.
 
-- [X] **Step 2: Add the smoke target to `Makefile`**
+- [ ] **Step 2: Add the smoke target to `Makefile`**
 
 ```makefile
 smoke:
@@ -2267,12 +2277,18 @@ smoke:
 
 Add `smoke` to the `.PHONY` line.
 
-- [X] **Step 3: Run a real crawl**
+- [ ] **Step 3: Run a real crawl**
 
 Run: `make smoke`
-Expected: the status line walks `running` → `succeeded`, then prints `succeeded 3 restaurants` and a `sourceStatus` map. This is acceptance criteria #2 and #3.
+Expected: the status line walks `running` → `succeeded`, then prints
+`succeeded 3 restaurants` and a `sourceStatus` map. This is acceptance criteria
+#2 and #3.
 
-- [X] **Step 4: Check the returned records by eye**
+Google Places bills by SKU according to the fields the mask requests, and
+`DETAIL_FIELDS` asks for `reviews` and `regularOpeningHours`, which sit in the
+pricier tiers. Keep `limit` at 3 and set a budget cap in the Cloud console.
+
+- [ ] **Step 4: Check the returned records by eye**
 
 Run:
 ```bash
@@ -2286,29 +2302,34 @@ for r in data['restaurants']:
 print('every record has seven hours keys and a tier in 1-4')
 "
 ```
-Expected: one line per restaurant and the final confirmation. A failed assertion here is a real bug in `normalize.py`, not a flaky API.
+Expected: one line per restaurant and the final confirmation. A failed assertion
+here is a real bug in `normalize.py`, not a flaky API.
 
-- [ ] **Step 5: Record fixtures from the real payloads**
+Google caps reviews at 5 per place permanently, so `reviews` will read 5 or
+fewer. Restaurants Google types generically come back with cuisine
+`"Restaurant"`; that is all Google knows about them.
 
-The unit-test fixtures so far were written from the documented response shapes. This replaces guesswork with what the APIs actually returned.
+- [ ] **Step 5: Record a fixture from the real payload**
+
+The unit-test fixtures so far were written from the documented response shapes.
+This replaces guesswork with what the API actually returned.
 
 ```bash
 python3 -c "
 import json
 data = json.load(open('/tmp/crawl-result.json'))
-raw = data['restaurants'][0]['raw']
-json.dump(raw['google'], open('fixtures/google-place-detail.json','w'), indent=2)
-json.dump(raw['foursquare']['tips'], open('fixtures/foursquare-tips.json','w'), indent=2)
-print('wrote fixtures')
+json.dump(data['restaurants'][0]['raw']['google'],
+          open('fixtures/google-place-detail.json','w'), indent=2)
+print('wrote fixtures/google-place-detail.json')
 "
 ```
 
-- [ ] **Step 6: Write a test that runs the real payloads through normalization**
+- [ ] **Step 6: Write a test that runs the real payload through normalization**
 
 ```python
 # tests/test_fixtures_match_reality.py
 """The other tests use payloads written by hand from the documented shapes. These
-run the same code over responses the live APIs actually returned."""
+run the same code over a response the live API actually returned."""
 import json
 import pathlib
 
@@ -2323,25 +2344,24 @@ def _load(name):
 
 
 def test_a_real_google_detail_assembles_into_a_valid_record():
-    detail = _load("google-place-detail.json")
-    record = build_restaurant("Bushwick", detail, None, [], None, 10)
+    record = build_restaurant("Bushwick", _load("google-place-detail.json"), None, 10)
     Restaurant.model_validate(record)
     assert record["slug"].startswith("bw-")
     assert 1 <= record["priceTier"] <= 4
 
 
-def test_real_foursquare_tips_become_reviews():
-    detail = _load("google-place-detail.json")
-    tips = _load("foursquare-tips.json")
-    record = build_restaurant("Bushwick", detail, {"fsq_place_id": "x"}, tips, None, 10)
-    Restaurant.model_validate(record)
-    assert any(review["source"] == "foursquare" for review in record["reviews"])
+def test_a_real_google_detail_yields_reviews_within_googles_cap():
+    record = build_restaurant("Bushwick", _load("google-place-detail.json"), None, 10)
+    assert 1 <= len(record["reviews"]) <= 5
+    assert all(review["source"] == "google" for review in record["reviews"])
 ```
 
 - [ ] **Step 7: Run the fixture test**
 
 Run: `docker compose exec crawler pytest tests/test_fixtures_match_reality.py -v`
-Expected: 2 passed. A failure here means a hand-written assumption about a response shape was wrong — fix `normalize.py`, and do not edit the fixture to make it pass.
+Expected: 2 passed. A failure here means a hand-written assumption about the
+response shape was wrong — fix `normalize.py`, and do not edit the fixture to
+make it pass.
 
 - [ ] **Step 8: Verify slug stability across two real crawls**
 
@@ -2358,23 +2378,44 @@ print('second:', sorted(second))
 print('stable overlap:', sorted(set(first) & set(second)))
 "
 ```
-Expected: the slugs that appear in both runs are identical strings. This is acceptance criterion #4. Google may return a slightly different place set between runs; what matters is that a restaurant present in both has the same slug.
+Expected: the slugs appearing in both runs are identical strings. This is
+acceptance criterion #4. Google may return a slightly different place set between
+runs; what matters is that a restaurant present in both has the same slug.
 
-- [ ] **Step 9: Verify a broken source still succeeds**
+- [ ] **Step 9: Confirm a failing source does not fail the job**
+
+Acceptance criterion #5. With Foursquare removed there is no credential to break
+on purpose, so this is verified two ways:
+
+- `test_one_failing_source_still_succeeds_and_is_reported` in `tests/test_jobs.py`
+  covers it deterministically, with the website source raising.
+- The live crawl usually demonstrates it for real: restaurant sites time out,
+  navigate mid-capture, or sit behind anti-bot protection.
 
 Run:
 ```bash
-sed -i '' 's/^FSQ_SERVICE_KEY=.*/FSQ_SERVICE_KEY=deliberately-wrong/' .env
-docker compose up -d && sleep 5
-make smoke
+python3 -c "
+import json
+d = json.load(open('/tmp/crawl-result.json'))
+print('status      :', d['status'])
+print('sourceStatus:', d['sourceStatus'])
+for e in d['errors']:
+    print(' -', e['source'], e['slug'], e['message'][:80])
+"
 ```
-Expected: `succeeded`, still 3 restaurants, `sourceStatus` showing `foursquare: failed`, and Foursquare entries in `errors`. This is acceptance criterion #5. Restore the real key afterwards and restart.
+Expected: `status: succeeded` regardless of what `sourceStatus.website` says. If
+every site crawled cleanly, the unit test is the coverage and that is fine — do
+not break something to manufacture a failure.
+
+Do not add crawl4ai's `magic` or `simulate_user` to get past a site's anti-bot
+protection. A site running bot protection is declining to be crawled, and
+`partial` with the reason in `errors` is the contract working.
 
 - [ ] **Step 10: Finish the README**
 
 Add to `README.md`:
 
-```markdown
+````markdown
 ## Endpoints
 
 | Method | Path | Auth | Notes |
@@ -2392,9 +2433,13 @@ curl -X POST localhost:8000/crawl \
 
 ## Sources
 
-Google Places discovers restaurants and supplies facts and reviews; Foursquare
-adds tips as review prose; the restaurant's own site is crawled for explicit
-dietary claims. Reddit is in the contract but not in v1.
+Google Places discovers restaurants and supplies facts and reviews, capped by
+Google at 5 reviews per place. The restaurant's own site is crawled for
+explicitly stated dietary claims.
+
+Foursquare was removed on 2026-08-13: its tips endpoint needs purchased credits,
+and its place match is a fuzzy name lookup with no confidence signal, which can
+silently attach the wrong venue's data. Reddit is in the contract and not built.
 
 A source without a credential is disabled and **absent from `sourceStatus`**
 rather than reported as failed. Enabled sources are logged at startup.
@@ -2403,18 +2448,18 @@ rather than reported as failed. Enabled sources are logged at startup.
 
 A job is `failed` only when it produced no restaurants at all. Anything else is
 `succeeded` with the damage recorded in `sourceStatus` and `errors`.
-```
+````
 
 - [ ] **Step 11: Run the whole suite one last time**
 
 Run: `make test`
-Expected: 72 passed
+Expected: 67 passed
 
 - [ ] **Step 12: Commit**
 
 ```bash
 git add fixtures tests/test_fixtures_match_reality.py Makefile README.md
-git commit -m "test: verify against live APIs and record real fixtures"
+git commit -m "test: verify against the live API and record a real fixture"
 ```
 
 ---
@@ -2427,5 +2472,5 @@ git commit -m "test: verify against live APIs and record real fixtures"
 | #2 polling reaches succeeded with 3 restaurants | Task 9 Step 3 (`make smoke`) |
 | #3 every record validates | Task 9 Step 4, plus `Restaurant.model_validate` in the pipeline |
 | #4 re-running produces the same slugs | Task 9 Step 8, plus `test_re_running_the_same_crawl_produces_the_same_slugs` |
-| #5 a killed source still succeeds | Task 9 Step 9, plus `test_one_failing_source_still_succeeds_and_is_reported` |
+| #5 a failing source still succeeds | `test_one_failing_source_still_succeeds_and_is_reported`, and Task 9 Step 9 against real site failures |
 | #6 nothing but `/health` is open | Task 8 Step 4 (four auth tests) |

@@ -37,33 +37,27 @@ def test_slug_is_lowercase_kebab_case_without_punctuation():
 
 
 def test_google_price_levels_map_to_tiers():
-    assert price_tier("PRICE_LEVEL_INEXPENSIVE", None) == 1
-    assert price_tier("PRICE_LEVEL_MODERATE", None) == 2
-    assert price_tier("PRICE_LEVEL_EXPENSIVE", None) == 3
-    assert price_tier("PRICE_LEVEL_VERY_EXPENSIVE", None) == 4
-    assert price_tier("PRICE_LEVEL_FREE", None) == 1
+    assert price_tier("PRICE_LEVEL_INEXPENSIVE") == 1
+    assert price_tier("PRICE_LEVEL_MODERATE") == 2
+    assert price_tier("PRICE_LEVEL_EXPENSIVE") == 3
+    assert price_tier("PRICE_LEVEL_VERY_EXPENSIVE") == 4
+    assert price_tier("PRICE_LEVEL_FREE") == 1
 
 
-def test_foursquare_price_is_used_when_google_has_none():
-    assert price_tier(None, 3) == 3
+def test_no_price_defaults_to_two_and_never_zero_or_none():
+    assert price_tier(None) == 2
+    assert price_tier("PRICE_LEVEL_UNSPECIFIED") == 2
 
 
-def test_no_price_anywhere_defaults_to_two_and_never_zero_or_none():
-    assert price_tier(None, None) == 2
-    assert price_tier("PRICE_LEVEL_UNSPECIFIED", None) == 2
-    assert price_tier(None, 0) == 2
-    assert price_tier(None, 9) == 2
+def test_cuisine_drops_the_trailing_word_restaurant():
+    assert cuisine_label({"primaryTypeDisplayName": {"text": "Pizza restaurant"}}) == "Pizza"
+    assert cuisine_label({"primaryTypeDisplayName": {"text": "Korean restaurant"}}) == "Korean"
 
 
-def test_cuisine_prefers_googles_display_name_without_the_word_restaurant():
-    detail = {"primaryTypeDisplayName": {"text": "Pizza restaurant"}}
-    assert cuisine_label(detail, None) == "Pizza"
-
-
-def test_cuisine_falls_back_to_foursquare_category_then_to_a_plain_default():
-    fsq = {"categories": [{"name": "Korean BBQ Restaurant"}]}
-    assert cuisine_label({}, fsq) == "Korean BBQ"
-    assert cuisine_label({}, None) == "Restaurant"
+def test_a_generically_typed_place_keeps_the_plain_default():
+    """Google types many restaurants as bare "Restaurant"; that is all we know."""
+    assert cuisine_label({"primaryTypeDisplayName": {"text": "Restaurant"}}) == "Restaurant"
+    assert cuisine_label({}) == "Restaurant"
 
 
 def test_dietary_tag_comes_from_an_explicit_google_attribute():

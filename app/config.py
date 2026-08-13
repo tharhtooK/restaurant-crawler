@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 class Settings:
     api_key: str
     google_maps_api_key: str | None
-    fsq_service_key: str | None
     job_timeout_seconds: int
     crawl_concurrency: int
 
@@ -35,7 +34,6 @@ def load_settings() -> Settings:
     return Settings(
         api_key=api_key,
         google_maps_api_key=_optional("GOOGLE_MAPS_API_KEY"),
-        fsq_service_key=_optional("FSQ_SERVICE_KEY"),
         job_timeout_seconds=_int_env("JOB_TIMEOUT_SECONDS", 300),
         crawl_concurrency=_int_env("CRAWL_CONCURRENCY", 4),
     )
@@ -55,7 +53,5 @@ def enabled_sources(s: Settings) -> list[str]:
     names = []
     if s.google_maps_api_key:
         names.append("google")
-    if s.fsq_service_key:
-        names.append("foursquare")
     names.append("website")
     return names

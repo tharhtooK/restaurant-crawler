@@ -32,7 +32,7 @@ def test_review_content_keeps_at_most_three_sentences():
 
 
 def test_assembled_record_validates_against_the_wire_model():
-    record = build_restaurant("Bushwick", GOOGLE_DETAIL, None, [], None, 10)
+    record = build_restaurant("Bushwick", GOOGLE_DETAIL, None, 10)
     Restaurant.model_validate(record)
     assert record["slug"] == "bw-robertas"
     assert record["priceTier"] == 2
@@ -42,18 +42,19 @@ def test_assembled_record_validates_against_the_wire_model():
 
 
 def test_reviews_carry_their_source_and_are_capped():
-    tips = [{"text": f"Tip number {n}.", "created_at": "2026-05-01T00:00:00",
-             "url": f"https://fsq/{n}"} for n in range(5)]
-    record = build_restaurant("Bushwick", GOOGLE_DETAIL, None, tips, None, 3)
+    detail = dict(GOOGLE_DETAIL)
+    detail["reviews"] = [{"text": {"text": f"Review number {n}."},
+                          "publishTime": "2026-05-01T00:00:00Z"} for n in range(5)]
+    record = build_restaurant("Bushwick", detail, None, 3)
     assert len(record["reviews"]) == 3
-    assert {review["source"] for review in record["reviews"]} <= {"google", "foursquare"}
-    assert record["reviews"][0]["source"] == "google"
+    assert {review["source"] for review in record["reviews"]} == {"google"}
 
 
 def test_raw_keeps_each_sources_untouched_payload():
-    record = build_restaurant("Bushwick", GOOGLE_DETAIL, {"fsq_place_id": "x"}, [], None, 10)
+    page = {"url": "https://robertaspizza.com", "markdown": "We have a vegan menu."}
+    record = build_restaurant("Bushwick", GOOGLE_DETAIL, page, 10)
     assert record["raw"]["google"] == GOOGLE_DETAIL
-    assert record["raw"]["foursquare"]["place"] == {"fsq_place_id": "x"}
+    assert record["raw"]["website"] == page
 
 
 def test_source_status_is_ok_partial_or_failed():
@@ -64,5 +65,5 @@ def test_source_status_is_ok_partial_or_failed():
 
 def test_a_source_that_never_ran_is_absent_from_source_status():
     """The contract has no 'skipped' value, and the consumer reads this as a dict,
-    so an absent key is how a source without credentials is reported."""
-    assert "foursquare" not in derive_source_status([("google", True)])
+    so an absent key is how a source that did not run is reported."""
+    assert "website" not in derive_source_status([("google", True)])

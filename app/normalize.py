@@ -68,43 +68,27 @@ def _google_reviews(google_detail: dict) -> list[dict]:
     return reviews
 
 
-def _foursquare_reviews(fsq_tips: list[dict]) -> list[dict]:
-    reviews = []
-    for tip in fsq_tips or []:
-        content = review_content(tip.get("text", ""))
-        if not content:
-            continue
-        reviews.append({
-            "content": content,
-            "source": "foursquare",
-            "sourceUrl": tip.get("url"),
-            "publishedAt": tip.get("created_at"),
-        })
-    return reviews
-
-
-def build_restaurant(neighborhood: str, google_detail: dict, fsq_place: dict | None,
-                     fsq_tips: list[dict], page: dict | None, max_reviews: int) -> dict:
+def build_restaurant(neighborhood: str, google_detail: dict, page: dict | None,
+                     max_reviews: int) -> dict:
     name = (google_detail.get("displayName") or {}).get("text", "").strip()
     if not name:
         raise ValueError(f"place {google_detail.get('id')!r} has no display name")
 
     page_markdown = (page or {}).get("markdown")
-    reviews = (_google_reviews(google_detail) + _foursquare_reviews(fsq_tips))[:max_reviews]
+    reviews = _google_reviews(google_detail)[:max_reviews]
 
     return {
         "slug": restaurant_slug(neighborhood, name),
         "name": name,
         "neighborhood": neighborhood,
-        "cuisine": cuisine_label(google_detail, fsq_place),
-        "priceTier": price_tier(google_detail.get("priceLevel"), (fsq_place or {}).get("price")),
+        "cuisine": cuisine_label(google_detail),
+        "priceTier": price_tier(google_detail.get("priceLevel")),
         "address": google_detail.get("formattedAddress", ""),
         "dietary": dietary_tags(google_detail, page_markdown),
         "hours": hours_from_google(google_detail.get("regularOpeningHours")),
         "reviews": reviews,
         "raw": {
             "google": google_detail,
-            "foursquare": {"place": fsq_place, "tips": fsq_tips},
             "website": page,
         },
     }
@@ -170,25 +154,14 @@ def restaurant_slug(neighborhood: str, name: str) -> str:
     return f"{neighborhood_code(neighborhood)}-{words}"
 
 
-def price_tier(google_price_level: str | None, fsq_price: int | None) -> int:
-    tier = _GOOGLE_PRICE_TIERS.get(google_price_level or "")
-    if tier:
-        return tier
-    if isinstance(fsq_price, int) and 1 <= fsq_price <= 4:
-        return fsq_price
-    return DEFAULT_PRICE_TIER
+def price_tier(google_price_level: str | None) -> int:
+    return _GOOGLE_PRICE_TIERS.get(google_price_level or "", DEFAULT_PRICE_TIER)
 
 
-def cuisine_label(google_detail: dict, fsq_place: dict | None) -> str:
-    google_label = (google_detail.get("primaryTypeDisplayName") or {}).get("text", "")
-    categories = (fsq_place or {}).get("categories") or []
-    fsq_label = categories[0].get("name", "") if categories else ""
-
-    for label in (google_label, fsq_label):
-        trimmed = re.sub(r"\s*restaurant$", "", label.strip(), flags=re.IGNORECASE)
-        if trimmed:
-            return trimmed
-    return "Restaurant"
+def cuisine_label(google_detail: dict) -> str:
+    label = (google_detail.get("primaryTypeDisplayName") or {}).get("text", "")
+    trimmed = re.sub(r"\s*restaurant$", "", label.strip(), flags=re.IGNORECASE)
+    return trimmed or "Restaurant"
 
 
 def dietary_tags(google_detail: dict, page_markdown: str | None) -> list[str]:
