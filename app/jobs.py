@@ -9,7 +9,7 @@ import httpx
 
 from .config import enabled_sources, settings
 from .models import CrawlRequest, Restaurant
-from .normalize import build_restaurant, derive_source_status
+from .normalize import build_restaurant, derive_source_status, restaurant_slug
 from .sources import foursquare, google, website
 
 logger = logging.getLogger(__name__)
@@ -86,14 +86,15 @@ async def _enrich(client: httpx.AsyncClient, job: Job, request: CrawlRequest,
         logger.warning("job %s place %s google failed: %s", job.id, place.get("id"), error)
         return None, outcomes
 
-    slug_name = (detail.get("displayName") or {}).get("text", place.get("id"))
+    name = (detail.get("displayName") or {}).get("text", place["id"])
+    slug = restaurant_slug(job.neighborhood, name)
     location = detail.get("location") or {}
     fsq_place, fsq_tips, page = None, [], None
 
     if "foursquare" in active:
         try:
             fsq_place = await foursquare.match_place(
-                client, slug_name, location.get("latitude"), location.get("longitude"))
+                client, name, location.get("latitude"), location.get("longitude"))
             if fsq_place:
                 fsq_id = fsq_place.get("fsq_place_id") or fsq_place.get("fsq_id")
                 fsq_tips = await foursquare.place_tips(
@@ -101,8 +102,8 @@ async def _enrich(client: httpx.AsyncClient, job: Job, request: CrawlRequest,
             outcomes.append(("foursquare", True))
         except (httpx.HTTPError, RuntimeError) as error:
             outcomes.append(("foursquare", False))
-            job.errors.append({"source": "foursquare", "slug": slug_name, "message": str(error)})
-            logger.warning("job %s %s foursquare failed: %s", job.id, slug_name, error)
+            job.errors.append({"source": "foursquare", "slug": slug, "message": str(error)})
+            logger.warning("job %s %s foursquare failed: %s", job.id, slug, error)
 
     site = detail.get("websiteUri")
     if "website" in active and website.crawlable(site):
@@ -111,16 +112,16 @@ async def _enrich(client: httpx.AsyncClient, job: Job, request: CrawlRequest,
             outcomes.append(("website", True))
         except (RuntimeError, asyncio.TimeoutError) as error:
             outcomes.append(("website", False))
-            job.errors.append({"source": "website", "slug": slug_name, "message": str(error)})
-            logger.warning("job %s %s website failed: %s", job.id, slug_name, error)
+            job.errors.append({"source": "website", "slug": slug, "message": str(error)})
+            logger.warning("job %s %s website failed: %s", job.id, slug, error)
 
     try:
         record = build_restaurant(job.neighborhood, detail, fsq_place, fsq_tips, page,
                                   request.max_reviews_per_restaurant)
         Restaurant.model_validate(record)
     except (ValueError, KeyError) as error:
-        job.errors.append({"source": "assembly", "slug": slug_name, "message": str(error)})
-        logger.warning("job %s dropped %s: %s", job.id, slug_name, error)
+        job.errors.append({"source": "assembly", "slug": slug, "message": str(error)})
+        logger.warning("job %s dropped %s: %s", job.id, slug, error)
         return None, outcomes
 
     job.progress["completed"] += 1

@@ -151,3 +151,12 @@ async def test_a_source_without_credentials_is_absent_from_source_status(monkeyp
     payload = jobs.job_payload(job)
     assert "foursquare" not in payload["sourceStatus"]
     assert payload["status"] == "succeeded"
+
+async def test_error_entries_identify_the_restaurant_by_slug(monkeypatch):
+    """The contract's errors carry a slug, and the consumer correlates on it."""
+    _stub_sources(monkeypatch, fsq_fails=True)
+    job = jobs.create_job("Bushwick")
+    await jobs.run_crawl(job, CrawlRequest(neighborhood="Bushwick", limit=1))
+
+    errors = jobs.job_payload(job)["errors"]
+    assert [error["slug"] for error in errors] == ["bw-robertas"]
