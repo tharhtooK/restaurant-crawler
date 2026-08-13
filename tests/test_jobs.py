@@ -45,7 +45,7 @@ def _stub_sources(monkeypatch, *, site_fails=False):
 
     monkeypatch.setattr(jobs.google, "search_restaurants", search)
     monkeypatch.setattr(jobs.google, "place_details", details)
-    monkeypatch.setattr(jobs.website, "fetch_page", page)
+    monkeypatch.setattr(jobs.website, "fetch_site", page)
 
 
 def test_a_new_job_starts_queued_with_a_unique_id():

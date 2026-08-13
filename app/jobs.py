@@ -93,7 +93,7 @@ async def _enrich(client: httpx.AsyncClient, job: Job, request: CrawlRequest,
     site = detail.get("websiteUri")
     if "website" in active and website.crawlable(site):
         try:
-            page = await website.fetch_page(site)
+            page = await website.fetch_site(site)
             outcomes.append(("website", True))
         except (RuntimeError, asyncio.TimeoutError) as error:
             outcomes.append(("website", False))

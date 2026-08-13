@@ -10,6 +10,13 @@
 
 ## Change log
 
+**2026-08-13 — the website source crawls a site, not a page.** `fetch_page`
+became `fetch_site`, using crawl4ai's `BFSDeepCrawlStrategy` at depth 1, capped
+at 3 pages, same-domain only, with the pages' markdown concatenated. Task 6 below
+shows the single-page version that was executed first. Measured caveat: on the
+one crawlable site in the test set the extra pages produced no additional dietary
+tags, and a 3-page cap can miss the menu page.
+
 **2026-08-13 — dietary phrases widened.** A live crawl found Ayat's own site
 saying "all halal, all delicious" and the original phrase list missed it, losing
 a true first-party claim. Task 3's list below is the corrected one. Bare-word
