@@ -1,0 +1,32 @@
+app = "restaurant-crawler"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  JOB_TIMEOUT_SECONDS = "300"
+  CRAWL_CONCURRENCY = "2"
+  LOG_LEVEL = "INFO"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  # Suspend snapshots RAM to disk, so the in-process job registry survives an
+  # idle machine. "stop" would lose it. https://fly.io/docs/reference/suspend-resume/
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/health"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "20s"
+
+[[vm]]
+  # Suspend is unsupported above 2gb, and one headless Chromium per concurrent
+  # crawl means CRAWL_CONCURRENCY must come down with it.
+  memory = "2gb"
+  cpus = 2
