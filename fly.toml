@@ -1,10 +1,11 @@
-# fly.toml app configuration file generated for restaurant-crawler-cqfv-w on 2026-08-14T07:12:46Z
+# fly.toml app configuration file generated for restaurant-crawler-cqfv-w on 2026-08-14T19:25:51Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
 app = 'restaurant-crawler-cqfv-w'
 primary_region = 'ams'
+kill_timeout = '60s'
 
 [build]
   dockerfile = 'Dockerfile'
@@ -20,6 +21,7 @@ primary_region = 'ams'
   auto_stop_machines = 'suspend'
   auto_start_machines = true
   min_machines_running = 0
+  checks = [{ grace_period = '20s', interval = '30s', method = 'GET', path = '/health', timeout = '5s' }]
 
   [[http_service.checks]]
     interval = '30s'
