@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for restaurant-crawler-blwmma on 2026-08-14T05:50:39Z
+# fly.toml app configuration file generated for restaurant-crawler-cqfv-w on 2026-08-14T07:12:46Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'restaurant-crawler-blwmma'
+app = 'restaurant-crawler-cqfv-w'
 primary_region = 'ams'
 
 [build]
