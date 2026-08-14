@@ -1,32 +1,35 @@
-app = "restaurant-crawler"
-primary_region = "iad"
+# fly.toml app configuration file generated for restaurant-crawler-blwmma on 2026-08-14T05:50:39Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'restaurant-crawler-blwmma'
+primary_region = 'ams'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
 
 [env]
-  JOB_TIMEOUT_SECONDS = "300"
-  CRAWL_CONCURRENCY = "2"
-  LOG_LEVEL = "INFO"
+  CRAWL_CONCURRENCY = '2'
+  JOB_TIMEOUT_SECONDS = '300'
+  LOG_LEVEL = 'INFO'
 
 [http_service]
-  internal_port = 8000
+  internal_port = 8080
   force_https = true
-  # Suspend snapshots RAM to disk, so the in-process job registry survives an
-  # idle machine. "stop" would lose it. https://fly.io/docs/reference/suspend-resume/
-  auto_stop_machines = "suspend"
+  auto_stop_machines = 'suspend'
   auto_start_machines = true
   min_machines_running = 0
 
   [[http_service.checks]]
-    method = "GET"
-    path = "/health"
-    interval = "30s"
-    timeout = "5s"
-    grace_period = "20s"
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '20s'
+    method = 'GET'
+    path = '/health'
 
 [[vm]]
-  # Suspend is unsupported above 2gb, and one headless Chromium per concurrent
-  # crawl means CRAWL_CONCURRENCY must come down with it.
-  memory = "2gb"
+  memory = '2gb'
+  cpu_kind = 'shared'
   cpus = 2
+  memory_mb = 512
