@@ -1,4 +1,4 @@
-app = "restaurant-crawler"
+app = "restaurant-crawler-cqfv-w"
 primary_region = "iad"
 
 [build]
@@ -28,5 +28,7 @@ primary_region = "iad"
 [[vm]]
   # Suspend is unsupported above 2gb, and one headless Chromium per concurrent
   # crawl means CRAWL_CONCURRENCY must come down with it.
-  memory = "2gb"
+  # Plain integer megabytes: "2gb" parsed as 2 MB and the machine was rejected.
+  memory = 2048
+  cpu_kind = "shared"
   cpus = 2
